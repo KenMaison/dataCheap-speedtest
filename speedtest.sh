@@ -29,7 +29,8 @@ for arg in "$@"; do
     fi
 done
 
-TMPDIR_ST=$(mktemp -d /tmp/yandex_speedtest.XXXXXX)
+# Исправлено: гарантированное создание директории
+TMPDIR_ST=""
 SPINNER_PID=""
 
 debug() {
@@ -39,7 +40,9 @@ debug() {
 }
 
 cleanup() {
-    rm -rf "$TMPDIR_ST" 2>/dev/null
+    if [ -n "$TMPDIR_ST" ] && [ -d "$TMPDIR_ST" ]; then
+        rm -rf "$TMPDIR_ST" 2>/dev/null
+    fi
     kill $(jobs -p) 2>/dev/null || true
 }
 
@@ -131,8 +134,14 @@ print_header() {
 }
 
 fetch_probes() {
-    local raw
+    # Исправлено: создаём директорию прямо перед использованием
+    TMPDIR_ST=$(mktemp -d /tmp/yandex_speedtest.XXXXXX 2>/dev/null || echo "")
+    if [ -z "$TMPDIR_ST" ] || [ ! -d "$TMPDIR_ST" ]; then
+        TMPDIR_ST="/tmp/yandex_speedtest.$$"
+        mkdir -p "$TMPDIR_ST"
+    fi
 
+    local raw
     raw=$(curl -s --max-time 10 \
         -H "User-Agent: $UA" \
         -H "Referer: https://yandex.ru/internet/" \
